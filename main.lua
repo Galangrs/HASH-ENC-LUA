@@ -23,7 +23,7 @@ local ChangeFormat = {
                     result = result .. 'E' 
                     i = i + 2 
                 else
-                    result = result .. "0"
+                    result = result .. char
                     i = i + 1
                 end
             else
@@ -36,7 +36,7 @@ local ChangeFormat = {
                 i = i + 1
             end
         end
-        return result
+        return result:gsub("`", "0")
     end
 }
 
@@ -68,17 +68,23 @@ local Prometheus = {
         local o = {
             bxor = function(a, b)
                 local result = 0
-                local bitValue = 1
+                local bitPosition = 1
+                local lookupTable = {}
+            
+                for i = 0, 1 do
+                    for j = 0, 1 do
+                        lookupTable[i * 2 + j] = i ~= j and 1 or 0
+                    end
+                end
             
                 while a > 0 or b > 0 do
                     local bitA = a % 2
                     local bitB = b % 2
             
-                    if bitA ~= bitB then
-                        result = result + bitValue
-                    end
+                    local index = bitA * 2 + bitB
+                    result = result + bitPosition * lookupTable[index]
             
-                    bitValue = bitValue * 2
+                    bitPosition = bitPosition * 2
                     a = math.floor(a / 2)
                     b = math.floor(b / 2)
                 end
@@ -99,16 +105,6 @@ local Prometheus = {
     end,
     byteToHex = function(self,byte)
         return string.format("%02x", byte)
-    end,
-    stringToHex = function(self,str)
-        return (str:gsub('.', function (c)
-            return string.format('%02X', string.byte(c))
-        end))
-    end,
-    hexToString = function(self,hex)
-        return hex:gsub('..', function (cc)
-            return string.char(tonumber(cc, 16))
-        end)
     end,
     enc = function(self,data, key)
         local encrypted_data = ""
@@ -138,17 +134,23 @@ local MD5Hasher = {
         local o = {
             bxor = function(a, b)
                 local result = 0
-                local bitValue = 1
+                local bitPosition = 1
+                local lookupTable = {}
+            
+                for i = 0, 1 do
+                    for j = 0, 1 do
+                        lookupTable[i * 2 + j] = i ~= j and 1 or 0
+                    end
+                end
             
                 while a > 0 or b > 0 do
                     local bitA = a % 2
                     local bitB = b % 2
             
-                    if bitA ~= bitB then
-                        result = result + bitValue
-                    end
+                    local index = bitA * 2 + bitB
+                    result = result + bitPosition * lookupTable[index]
             
-                    bitValue = bitValue * 2
+                    bitPosition = bitPosition * 2
                     a = math.floor(a / 2)
                     b = math.floor(b / 2)
                 end
@@ -157,17 +159,23 @@ local MD5Hasher = {
             end,
             band = function(a, b)
                 local result = 0
-                local bitValue = 1
+                local bitPosition = 1
+                local lookupTable = {}
+            
+                for i = 0, 1 do
+                    for j = 0, 1 do
+                        lookupTable[i * 2 + j] = i == 1 and j == 1 and 1 or 0
+                    end
+                end
             
                 while a > 0 and b > 0 do
                     local bitA = a % 2
                     local bitB = b % 2
             
-                    if bitA == 1 and bitB == 1 then
-                        result = result + bitValue
-                    end
+                    local index = bitA * 2 + bitB
+                    result = result + bitPosition * lookupTable[index]
             
-                    bitValue = bitValue * 2
+                    bitPosition = bitPosition * 2
                     a = math.floor(a / 2)
                     b = math.floor(b / 2)
                 end
@@ -176,17 +184,23 @@ local MD5Hasher = {
             end,
             bor = function(a, b)
                 local result = 0
-                local bitValue = 1
+                local bitPosition = 1
+                local lookupTable = {}
+            
+                for i = 0, 1 do
+                    for j = 0, 1 do
+                        lookupTable[i * 2 + j] = (i == 1 or j == 1) and 1 or 0
+                    end
+                end
             
                 while a > 0 or b > 0 do
                     local bitA = a % 2
                     local bitB = b % 2
             
-                    if bitA == 1 or bitB == 1 then
-                        result = result + bitValue
-                    end
+                    local index = bitA * 2 + bitB
+                    result = result + bitPosition * lookupTable[index]
             
-                    bitValue = bitValue * 2
+                    bitPosition = bitPosition * 2
                     a = math.floor(a / 2)
                     b = math.floor(b / 2)
                 end
@@ -195,26 +209,75 @@ local MD5Hasher = {
             end,
             bnot = function(a)
                 local result = 0
-                local bitValue = 1
+                local bitPosition = 1
+                local bitSize = 64
             
                 while a > 0 do
-                    local bitA = a % 2
+                    a = math.floor(a / 2)
+                    bitSize = bitSize + 1
+                end
             
-                    if bitA == 0 then
-                        result = result + bitValue
-                    end
-
-                    bitValue = bitValue * 2
+                for i = 0, bitSize - 1 do
+                    local bitA = (a % 2 + 1) % 2 
+                    local index = bitA
+            
+                    result = result + bitPosition * (bitA == 0 and 1 or 0)
+            
+                    bitPosition = bitPosition * 2
                     a = math.floor(a / 2)
                 end
             
                 return result
             end,
             rshift = function(num, shift)
-                return math.floor(num / 2^shift)
+                local result = 0
+                local bitPosition = 1
+                local bitSize = 64
+            
+                local tempNum = num
+                while tempNum > 0 do
+                    tempNum = math.floor(tempNum / 2)
+                    bitSize = bitSize + 1
+                end
+            
+                for i = 0, bitSize - 1 do
+                    local bitNum = (num % 2 + 1) % 2  
+                    local index = bitNum
+            
+                    if i >= shift then
+                        result = result + bitPosition * (bitNum == 0 and 1 or 0)
+                    end
+            
+                    bitPosition = bitPosition * 2
+                    num = math.floor(num / 2)
+                end
+            
+                return result
             end,
             lshift = function(num, shift)
-                return num * 2^shift
+                local result = 0
+                local bitPosition = 1
+                local bitSize = 64
+            
+                local tempNum = num
+                while tempNum > 0 do
+                    tempNum = math.floor(tempNum / 2)
+                    bitSize = bitSize + 1
+                end
+            
+                for i = 0, bitSize - 1 do
+                    local bitNum = (num % 2 + 1) % 2  
+                    local index = bitNum
+            
+                    if i + shift < bitSize then
+                        result = result + bitPosition * (bitNum == 0 and 1 or 0)
+                    end
+            
+                    bitPosition = bitPosition * 2
+                    num = math.floor(num / 2)
+                end
+            
+                return result
             end,
             S = {
                 7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,
