@@ -23,7 +23,7 @@ local ChangeFormat = {
                     result = result .. 'E' 
                     i = i + 2 
                 else
-                    result = result .. char
+                    result = result .. "0"
                     i = i + 1
                 end
             else
@@ -36,7 +36,7 @@ local ChangeFormat = {
                 i = i + 1
             end
         end
-        return result:gsub("`", "0")
+        return result
     end
 }
 
